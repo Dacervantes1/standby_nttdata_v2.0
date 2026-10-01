@@ -21,3 +21,14 @@ input,select,textarea{border:1px solid #cfd9e7;border-radius:8px;padding:9px 10p
 .action-group{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.action-group button{padding:6px 9px;font-size:12px}.public-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#eef6ff;border:1px solid #c8ddf7;border-radius:14px;padding:13px 16px;margin-bottom:18px}.public-banner b{color:#174b89}.public-banner p{margin:3px 0 0;font-size:12px;color:var(--muted)}
 .range-hint{padding:10px 12px;border:1px solid #d8e5f5;background:#f6faff;border-radius:10px;color:#4d6482;font-size:12px;margin:10px 0}.soft-note{font-size:11px;color:var(--muted);margin-top:5px}.public-table td,.public-table th{white-space:nowrap}.public-table td:last-child{white-space:normal;min-width:260px}
 @media(max-width:700px){.public-banner{align-items:flex-start;flex-direction:column}.action-group{width:100%}}
+
+/* V2.2 - tipos de guardia */
+.plan button.cell.backup{background:#7c5ce0;color:#fff;font-weight:800}
+.plan button.cell.mixed{background:linear-gradient(135deg,#ffbe7c 0 50%,#7c5ce0 50% 100%);color:#1f2937;font-weight:800}
+.guard-key{padding:2px 7px;border-radius:999px;font-weight:700}
+.guard-key.normal{background:#ffbe7c;color:#4a2a05}
+.guard-key.backup{background:#7c5ce0;color:#fff}
+.calendar-day.guard-backup{border-color:#8b6bea;background:#f2edff}
+.calendar-day .tag.backup{background:#6f4bd8}
+.pill.backup-pill{background:#eee8ff;color:#5b3ac4}
+.guard-edit-row select{min-width:170px}
