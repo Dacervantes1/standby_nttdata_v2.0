@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Standby Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="setupBanner" class="setup-banner hidden"></div>
+  <main id="authScreen" class="auth-shell hidden">
+    <section class="auth-card">
+      <div class="brand-lockup"><div class="brand-mark">SC</div><div><h1>Standby Control</h1><p>Guardias e intervenciones remotas</p></div></div>
+      <h2>Iniciar sesión</h2>
+      <p class="muted">Usa tu correo corporativo y contraseña. Los permisos administrativos se controlan por rol en la base de datos.</p>
+      <form id="loginForm" class="form-grid one-col">
+        <label>Correo<input id="loginEmail" type="email" required autocomplete="username"></label>
+        <label>Contraseña<input id="loginPassword" type="password" required autocomplete="current-password"></label>
+        <button class="primary wide" type="submit">Ingresar</button>
+      </form>
+      <div class="public-entry">
+        <span>o</span>
+        <button id="publicAccessBtn" class="secondary wide" type="button">Entrar a consulta pública</button>
+        <small>Acceso de solo lectura. Permite consultar y descargar reportes sin mostrar valores monetarios ni horas acumuladas.</small>
+      </div>
+      <div id="loginError" class="alert error hidden"></div>
+    </section>
+  </main>
+
+  <div id="shell" class="shell hidden">
+    <aside class="sidebar">
+      <div class="brand-lockup sidebar-brand"><div class="brand-mark">SC</div><div><b>Standby Control</b><small>NTT DATA</small></div></div>
+      <nav id="nav">
+        <button data-view="dashboard" class="active">Dashboard</button>
+        <button data-view="planificacion" data-admin-only>Planificación</button>
+        <button data-view="intervenciones">Intervenciones</button>
+        <button data-view="colaboradores" data-admin-only>Colaboradores</button>
+        <button data-view="proyectos" data-admin-only>Proyectos</button>
+        <button data-view="tarifas" data-admin-only>Tarifas</button>
+        <button data-view="reportes" data-admin-only>Reportes</button>
+      </nav>
+      <div class="sidebar-user">
+        <div><span id="userName">Usuario</span><small id="userRole">—</small></div>
+        <button id="logoutBtn" class="ghost">Salir</button>
+      </div>
+    </aside>
+    <section class="main">
+      <header class="topbar">
+        <div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle" class="muted"></p></div>
+        <div id="topbarActions"></div>
+      </header>
+      <div id="app" class="page"></div>
+    </section>
+  </div>
+
+  <div id="modal" class="modal hidden"><div class="modal-card"><button id="modalClose" class="modal-close">×</button><div id="modalContent"></div></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
