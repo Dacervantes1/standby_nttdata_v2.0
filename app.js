@@ -37,9 +37,14 @@ function timeRange(i){const f=v=>v?new Intl.DateTimeFormat('es-EC',{timeZone:'Am
 
 async function init(){
   $('#modalClose').onclick=closeModal;$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
-  $('#logoutBtn').onclick=async()=>{if(isPublic())return exitPublic();await db?.auth.signOut()};
+  const closeMobileNav=()=>{document.body.classList.remove('mobile-nav-open');$('#mobileMenuBtn')?.setAttribute('aria-expanded','false');$('#mobileNavBackdrop')?.classList.add('hidden')};
+  const openMobileNav=()=>{document.body.classList.add('mobile-nav-open');$('#mobileMenuBtn')?.setAttribute('aria-expanded','true');$('#mobileNavBackdrop')?.classList.remove('hidden')};
+  $('#mobileMenuBtn')?.addEventListener('click',()=>document.body.classList.contains('mobile-nav-open')?closeMobileNav():openMobileNav());
+  $('#mobileNavBackdrop')?.addEventListener('click',closeMobileNav);
+  window.addEventListener('resize',()=>{if(window.innerWidth>760)closeMobileNav()});
+  $('#logoutBtn').onclick=async()=>{closeMobileNav();if(isPublic())return exitPublic();await db?.auth.signOut()};
   $('#publicAccessBtn').onclick=enterPublic;
-  $('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(!b)return;if(b.dataset.adminOnly!==undefined&&!isAdmin())return;state.view=b.dataset.view;render()});
+  $('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(!b)return;if(b.dataset.adminOnly!==undefined&&!isAdmin())return;state.view=b.dataset.view;closeMobileNav();render()});
   $('#loginForm').addEventListener('submit',login);
   if(!configured){$('#setupBanner').classList.remove('hidden');$('#setupBanner').innerHTML='<b>Configuración pendiente:</b> completa <code>config.js</code> con SUPABASE_URL y SUPABASE_ANON_KEY. Luego ejecuta schema.sql/seed.sql y MIGRACION_V2.sql en Supabase.';$('#authScreen').classList.remove('hidden');$('#loginForm button').disabled=true;$('#publicAccessBtn').disabled=true;return;}
   const {data:{session}}=await db.auth.getSession();await onSession(session);
