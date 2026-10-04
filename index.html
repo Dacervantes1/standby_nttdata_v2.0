@@ -31,7 +31,8 @@
   </main>
 
   <div id="shell" class="shell hidden">
-    <aside class="sidebar">
+    <div id="mobileNavBackdrop" class="mobile-nav-backdrop hidden" aria-hidden="true"></div>
+    <aside class="sidebar" id="sidebar">
       <div class="brand-lockup sidebar-brand"><div class="brand-mark">SC</div><div><b>Standby Control</b><small>NTT DATA</small></div></div>
       <nav id="nav">
         <button data-view="dashboard" class="active">Dashboard</button>
@@ -49,7 +50,7 @@
     </aside>
     <section class="main">
       <header class="topbar">
-        <div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle" class="muted"></p></div>
+        <div class="topbar-title-wrap"><button id="mobileMenuBtn" class="mobile-menu-btn" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button><div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle" class="muted"></p></div></div>
         <div id="topbarActions"></div>
       </header>
       <div id="app" class="page"></div>
