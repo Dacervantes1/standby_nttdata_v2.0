@@ -40,6 +40,8 @@ async function init(){
   const closeMobileNav=()=>{document.body.classList.remove('mobile-nav-open');$('#mobileMenuBtn')?.setAttribute('aria-expanded','false');$('#mobileNavBackdrop')?.classList.add('hidden')};
   const openMobileNav=()=>{document.body.classList.add('mobile-nav-open');$('#mobileMenuBtn')?.setAttribute('aria-expanded','true');$('#mobileNavBackdrop')?.classList.remove('hidden')};
   $('#mobileMenuBtn')?.addEventListener('click',()=>document.body.classList.contains('mobile-nav-open')?closeMobileNav():openMobileNav());
+  window.addEventListener('resize',()=>{if(window.innerWidth>820)closeMobileNav()});
+  window.addEventListener('orientationchange',()=>setTimeout(closeMobileNav,120));
   $('#mobileNavBackdrop')?.addEventListener('click',closeMobileNav);
   window.addEventListener('resize',()=>{if(window.innerWidth>760)closeMobileNav()});
   $('#logoutBtn').onclick=async()=>{closeMobileNav();if(isPublic())return exitPublic();await db?.auth.signOut()};
@@ -223,7 +225,7 @@ function renderCollab(){
   $('#collabMonth').onchange=e=>{state.month=e.target.value;renderCollab()};$('#collabNewT2').onclick=()=>openT2Modal();$('#collabSeeT2').onclick=$('#collabManageT2').onclick=()=>{state.view='intervenciones';render()};
 }
 
-function collabCalendar(guards){const byDate=new Map();for(const g of guards){if(!byDate.has(g.fecha_guardia))byDate.set(g.fecha_guardia,[]);byDate.get(g.fecha_guardia).push(g)}const [y,m]=state.month.split('-').map(Number),first=new Date(y,m-1,1).getDay(),n=daysInMonth(state.month);let html='<div class="month-calendar">'+['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(x=>`<div class="dow">${x}</div>`).join('');for(let i=0;i<first;i++)html+='<div class="calendar-day off"></div>';for(let d=1;d<=n;d++){const f=`${state.month}-${String(d).padStart(2,'0')}`,gs=byDate.get(f)||[],on=gs.length>0,backupOnly=on&&gs.every(g=>guardMode(g)==='BACKUP'),label=guardLabelList(gs);html+=`<div class="calendar-day ${dayType(f)==='FDS'?'weekend':''} ${on?'guard':''} ${backupOnly?'guard-backup':''}"><span class="num">${d}</span>${on?`<span class="tag ${backupOnly?'backup':''}">${label} · Standby</span>`:''}</div>`}return html+'</div>'}
+function collabCalendar(guards){const byDate=new Map();for(const g of guards){if(!byDate.has(g.fecha_guardia))byDate.set(g.fecha_guardia,[]);byDate.get(g.fecha_guardia).push(g)}const [y,m]=state.month.split('-').map(Number),first=new Date(y,m-1,1).getDay(),n=daysInMonth(state.month);let html='<div class="month-calendar">'+['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(x=>`<div class="dow">${x}</div>`).join('');for(let i=0;i<first;i++)html+='<div class="calendar-day off"></div>';for(let d=1;d<=n;d++){const f=`${state.month}-${String(d).padStart(2,'0')}`,gs=byDate.get(f)||[],on=gs.length>0,backupOnly=on&&gs.every(g=>guardMode(g)==='BACKUP'),label=guardLabelList(gs);html+=`<div class="calendar-day ${dayType(f)==='FDS'?'weekend':''} ${on?'guard':''} ${backupOnly?'guard-backup':''}"><span class="num">${d}</span>${on?`<span class="tag ${backupOnly?'backup':''}">${label} · Standby</span>`:''}</div>`}return '<div class="calendar-scroll">'+html+'</div></div>'}
 
 function openModal(html){$('#modalContent').innerHTML=html;$('#modal').classList.remove('hidden')}
 function closeModal(){$('#modal').classList.add('hidden')}
