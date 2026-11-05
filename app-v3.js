@@ -86,10 +86,11 @@
 
 
   // -----------------------------------------------------------------------
-  // Buscador global de la vista.
-  // - Si la pantalla ya tiene .filterbar, el buscador se integra allí.
-  // - Si no tiene filtros, se muestra debajo del encabezado.
-  // - La búsqueda ignora mayúsculas/minúsculas y tildes.
+  // Buscador global V3.2
+  // - Filtra realmente las filas/elementos visibles de la pantalla.
+  // - No depende solo de una clase CSS: fuerza display:none cuando no coincide.
+  // - Ignora tildes y mayúsculas/minúsculas.
+  // - Mantiene un contador compacto y un único botón de limpiar.
   // -----------------------------------------------------------------------
   let globalViewSearchTerm = '';
   let globalViewSearchView = null;
@@ -105,16 +106,17 @@
 
   function searchTextFor(element){
     let value = element?.innerText || element?.textContent || '';
-    element?.querySelectorAll?.('[title]').forEach(node=>{
+    element?.querySelectorAll?.('[title],[data-search]').forEach(node=>{
       value += ' ' + (node.getAttribute('title') || '');
+      value += ' ' + (node.getAttribute('data-search') || '');
     });
     return normalizeSearch(value);
   }
 
   function searchCandidates(){
+    // tbody > tr cubre tanto la matriz .plan como cualquier tabla CRUD/reporte.
     const selectors = [
-      '.plan tbody tr',
-      '.table tbody tr',
+      'table tbody > tr',
       '.tech-item',
       '.detail-row',
       '.calendar-day',
@@ -123,6 +125,7 @@
     ];
     const seen = new Set();
     const result = [];
+
     selectors.forEach(selector=>{
       app.querySelectorAll(selector).forEach(node=>{
         if(node.classList.contains('empty') || seen.has(node)) return;
@@ -133,54 +136,113 @@
     return result;
   }
 
+  function setSearchVisibility(node, visible){
+    node.classList.toggle('global-search-hidden', !visible);
+    node.toggleAttribute('data-search-filtered-out', !visible);
+
+    // Refuerzo para tablas/matrices donde reglas de display pueden prevalecer.
+    if(!visible){
+      node.style.setProperty('display','none','important');
+      node.setAttribute('aria-hidden','true');
+    }else{
+      node.style.removeProperty('display');
+      node.removeAttribute('aria-hidden');
+    }
+  }
+
+  function restoreSearchVisibility(){
+    app.querySelectorAll('[data-search-filtered-out], .global-search-hidden').forEach(node=>{
+      node.classList.remove('global-search-hidden');
+      node.removeAttribute('data-search-filtered-out');
+      node.removeAttribute('aria-hidden');
+      node.style.removeProperty('display');
+    });
+  }
+
+  function updateSearchStatus(matches,total,query){
+    document.querySelectorAll('[data-global-search-count]').forEach(el=>{
+      el.classList.toggle('has-query',Boolean(query));
+      el.classList.toggle('no-results',Boolean(query) && matches===0);
+
+      if(!query){
+        el.textContent = 'Buscar';
+      }else if(!total){
+        el.textContent = 'Sin elementos';
+      }else if(matches===0){
+        el.textContent = '0 resultados';
+      }else{
+        el.textContent = `${matches} resultado${matches===1?'':'s'}`;
+      }
+    });
+  }
+
   function applyGlobalViewSearch(){
     const query = normalizeSearch(globalViewSearchTerm);
     const candidates = searchCandidates();
-    let matches = 0;
 
+    if(!query){
+      restoreSearchVisibility();
+      updateSearchStatus(candidates.length,candidates.length,'');
+      return;
+    }
+
+    let matches = 0;
     candidates.forEach(node=>{
-      const visible = !query || searchTextFor(node).includes(query);
-      node.classList.toggle('global-search-hidden',!visible);
+      const visible = searchTextFor(node).includes(query);
+      setSearchVisibility(node,visible);
       if(visible) matches += 1;
     });
 
-    document.querySelectorAll('[data-global-search-count]').forEach(el=>{
-      if(!query){
-        el.textContent = 'Busca por nombre, código, dominio, proyecto, ticket o cualquier texto visible.';
-      }else if(!candidates.length){
-        el.textContent = 'No hay elementos listables en esta vista.';
-      }else{
-        el.textContent = `${matches} resultado${matches===1?'':'s'} encontrado${matches===1?'':'s'}`;
-      }
-    });
+    updateSearchStatus(matches,candidates.length,query);
   }
 
   function buildGlobalSearchControl(standalone=false){
     const wrapper = document.createElement(standalone ? 'div' : 'label');
     wrapper.className = standalone ? 'global-search-panel global-view-search' : 'global-view-search';
-    wrapper.innerHTML = `${standalone?'<div class="global-search-copy"><b>Buscar en esta pantalla</b><small data-global-search-count></small></div>':'<span>Buscar</span>'}
-      <div class="global-search-input-wrap">
-        <input id="globalViewSearch" type="search" autocomplete="off" placeholder="Escribe cualquier palabra..." aria-label="Buscar en esta pantalla">
-        <button type="button" class="global-search-clear" aria-label="Limpiar búsqueda" title="Limpiar">×</button>
-      </div>
-      ${standalone?'':'<small class="global-search-inline-count" data-global-search-count></small>'}`;
+    wrapper.innerHTML = `
+      ${standalone ? '<div class="global-search-copy"><b>Buscar en esta pantalla</b><small>Filtra nombres, códigos, dominios, proyectos, tickets y texto visible.</small></div>' : '<span class="global-search-label">Buscar</span>'}
+      <div class="global-search-control">
+        <span class="global-search-icon" aria-hidden="true"></span>
+        <input id="globalViewSearch" type="text" autocomplete="off" spellcheck="false" placeholder="Buscar por nombre, código, dominio, proyecto..." aria-label="Buscar en esta pantalla">
+        <span class="global-search-result" data-global-search-count>Buscar</span>
+        <button type="button" class="global-search-clear" aria-label="Limpiar búsqueda" title="Limpiar búsqueda">×</button>
+      </div>`;
 
     const input = wrapper.querySelector('#globalViewSearch');
     const clear = wrapper.querySelector('.global-search-clear');
     input.value = globalViewSearchTerm;
+
     input.addEventListener('input',e=>{
       globalViewSearchTerm = e.target.value;
-      clear.classList.toggle('visible',Boolean(globalViewSearchTerm));
+      wrapper.classList.toggle('searching',Boolean(normalizeSearch(globalViewSearchTerm)));
+      clear.classList.toggle('visible',Boolean(normalizeSearch(globalViewSearchTerm)));
       applyGlobalViewSearch();
     });
-    clear.addEventListener('click',()=>{
+
+    input.addEventListener('keydown',e=>{
+      if(e.key === 'Escape' && globalViewSearchTerm){
+        e.preventDefault();
+        globalViewSearchTerm = '';
+        input.value = '';
+        wrapper.classList.remove('searching');
+        clear.classList.remove('visible');
+        applyGlobalViewSearch();
+      }
+    });
+
+    clear.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
       globalViewSearchTerm = '';
       input.value = '';
+      wrapper.classList.remove('searching');
       clear.classList.remove('visible');
       applyGlobalViewSearch();
       input.focus();
     });
-    clear.classList.toggle('visible',Boolean(globalViewSearchTerm));
+
+    wrapper.classList.toggle('searching',Boolean(normalizeSearch(globalViewSearchTerm)));
+    clear.classList.toggle('visible',Boolean(normalizeSearch(globalViewSearchTerm)));
     return wrapper;
   }
 
@@ -189,15 +251,15 @@
     const host = document.querySelector('#viewSearchHost');
     if(!host || !app || document.querySelector('#shell')?.classList.contains('hidden')) return;
 
-    // Cada módulo empieza con una búsqueda limpia.
+    // Al cambiar de módulo no arrastramos el filtro de la pantalla anterior.
     if(globalViewSearchView !== state.view){
+      restoreSearchVisibility();
       globalViewSearchView = state.view;
       globalViewSearchTerm = '';
     }
 
     const filterbar = app.querySelector('.filterbar');
 
-    // El render de una vista puede haber destruido el buscador anterior.
     document.querySelectorAll('.global-view-search').forEach(node=>{
       if(!node.closest('#viewSearchHost') && !node.closest('.filterbar')) node.remove();
     });
