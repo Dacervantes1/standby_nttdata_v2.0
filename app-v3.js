@@ -35,14 +35,9 @@
       img.addEventListener('error',()=>{img.remove();fallback.classList.remove('hidden')},{once:true});
     });
 
-    const topbar = document.querySelector('.topbar');
-    const actions = document.querySelector('#topbarActions');
-    if(topbar && actions && !topbar.querySelector('.topbar-brand')){
-      const brand = document.createElement('div');
-      brand.className = 'topbar-brand';
-      brand.innerHTML = '<img src="assets/ntt-data-logo.svg" alt="NTT DATA">';
-      topbar.insertBefore(brand,actions);
-    }
+    // V3.1: el logo permanece en el sidebar. Eliminamos cualquier marca duplicada
+    // en el encabezado para evitar saturar la parte superior.
+    document.querySelectorAll('.topbar-brand').forEach(x=>x.remove());
   }
 
   function completedServiceYears(employee, asOf = isoToday()){
@@ -89,6 +84,155 @@
   injectV3Navigation();
   applyBranding();
 
+
+  // -----------------------------------------------------------------------
+  // Buscador global de la vista.
+  // - Si la pantalla ya tiene .filterbar, el buscador se integra allí.
+  // - Si no tiene filtros, se muestra debajo del encabezado.
+  // - La búsqueda ignora mayúsculas/minúsculas y tildes.
+  // -----------------------------------------------------------------------
+  let globalViewSearchTerm = '';
+  let globalViewSearchView = null;
+  let searchMountScheduled = false;
+
+  function normalizeSearch(value){
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase()
+      .trim();
+  }
+
+  function searchTextFor(element){
+    let value = element?.innerText || element?.textContent || '';
+    element?.querySelectorAll?.('[title]').forEach(node=>{
+      value += ' ' + (node.getAttribute('title') || '');
+    });
+    return normalizeSearch(value);
+  }
+
+  function searchCandidates(){
+    const selectors = [
+      '.plan tbody tr',
+      '.table tbody tr',
+      '.tech-item',
+      '.detail-row',
+      '.calendar-day',
+      '.vacation-stat',
+      '.schedule-legend-item'
+    ];
+    const seen = new Set();
+    const result = [];
+    selectors.forEach(selector=>{
+      app.querySelectorAll(selector).forEach(node=>{
+        if(node.classList.contains('empty') || seen.has(node)) return;
+        seen.add(node);
+        result.push(node);
+      });
+    });
+    return result;
+  }
+
+  function applyGlobalViewSearch(){
+    const query = normalizeSearch(globalViewSearchTerm);
+    const candidates = searchCandidates();
+    let matches = 0;
+
+    candidates.forEach(node=>{
+      const visible = !query || searchTextFor(node).includes(query);
+      node.classList.toggle('global-search-hidden',!visible);
+      if(visible) matches += 1;
+    });
+
+    document.querySelectorAll('[data-global-search-count]').forEach(el=>{
+      if(!query){
+        el.textContent = 'Busca por nombre, código, dominio, proyecto, ticket o cualquier texto visible.';
+      }else if(!candidates.length){
+        el.textContent = 'No hay elementos listables en esta vista.';
+      }else{
+        el.textContent = `${matches} resultado${matches===1?'':'s'} encontrado${matches===1?'':'s'}`;
+      }
+    });
+  }
+
+  function buildGlobalSearchControl(standalone=false){
+    const wrapper = document.createElement(standalone ? 'div' : 'label');
+    wrapper.className = standalone ? 'global-search-panel global-view-search' : 'global-view-search';
+    wrapper.innerHTML = `${standalone?'<div class="global-search-copy"><b>Buscar en esta pantalla</b><small data-global-search-count></small></div>':'<span>Buscar</span>'}
+      <div class="global-search-input-wrap">
+        <input id="globalViewSearch" type="search" autocomplete="off" placeholder="Escribe cualquier palabra..." aria-label="Buscar en esta pantalla">
+        <button type="button" class="global-search-clear" aria-label="Limpiar búsqueda" title="Limpiar">×</button>
+      </div>
+      ${standalone?'':'<small class="global-search-inline-count" data-global-search-count></small>'}`;
+
+    const input = wrapper.querySelector('#globalViewSearch');
+    const clear = wrapper.querySelector('.global-search-clear');
+    input.value = globalViewSearchTerm;
+    input.addEventListener('input',e=>{
+      globalViewSearchTerm = e.target.value;
+      clear.classList.toggle('visible',Boolean(globalViewSearchTerm));
+      applyGlobalViewSearch();
+    });
+    clear.addEventListener('click',()=>{
+      globalViewSearchTerm = '';
+      input.value = '';
+      clear.classList.remove('visible');
+      applyGlobalViewSearch();
+      input.focus();
+    });
+    clear.classList.toggle('visible',Boolean(globalViewSearchTerm));
+    return wrapper;
+  }
+
+  function mountGlobalViewSearch(){
+    searchMountScheduled = false;
+    const host = document.querySelector('#viewSearchHost');
+    if(!host || !app || document.querySelector('#shell')?.classList.contains('hidden')) return;
+
+    // Cada módulo empieza con una búsqueda limpia.
+    if(globalViewSearchView !== state.view){
+      globalViewSearchView = state.view;
+      globalViewSearchTerm = '';
+    }
+
+    const filterbar = app.querySelector('.filterbar');
+
+    // El render de una vista puede haber destruido el buscador anterior.
+    document.querySelectorAll('.global-view-search').forEach(node=>{
+      if(!node.closest('#viewSearchHost') && !node.closest('.filterbar')) node.remove();
+    });
+
+    if(filterbar){
+      host.innerHTML = '';
+      host.classList.add('hidden');
+      let control = filterbar.querySelector('.global-view-search');
+      if(!control){
+        control = buildGlobalSearchControl(false);
+        filterbar.prepend(control);
+      }
+    }else{
+      host.classList.remove('hidden');
+      if(!host.querySelector('.global-view-search')){
+        host.innerHTML = '';
+        host.appendChild(buildGlobalSearchControl(true));
+      }
+    }
+
+    const input = document.querySelector('#globalViewSearch');
+    if(input && input.value !== globalViewSearchTerm) input.value = globalViewSearchTerm;
+    applyGlobalViewSearch();
+  }
+
+  function scheduleSearchMount(){
+    if(searchMountScheduled) return;
+    searchMountScheduled = true;
+    requestAnimationFrame(mountGlobalViewSearch);
+  }
+
+  const appSearchObserver = new MutationObserver(scheduleSearchMount);
+  appSearchObserver.observe(app,{childList:true,subtree:true});
+  scheduleSearchMount();
+
   // -----------------------------------------------------------------------
   // Extiende la carga de datos: el colaborador puede leer SU catálogo.
   // -----------------------------------------------------------------------
@@ -124,6 +268,7 @@
     const catalogBtn = document.querySelector('#nav [data-view="catalogo"]');
     if(catalogBtn) catalogBtn.textContent = isAdmin() ? 'Catálogo tecnológico' : 'Mi catálogo tecnológico';
     if(!isAdmin() && !isPublic() && state.view==='configuracion') state.view='dashboard';
+    scheduleSearchMount();
   };
 
   const renderV2 = render;
